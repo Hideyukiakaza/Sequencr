@@ -2,9 +2,9 @@
   <img src="public/sequencr-logo.png" alt="Sequencr Logo" width="350" />
 </p>
 
-<h1 align="center">Sequencr</h1>
-
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.paywithchai.in/hideyukiakaza)
+
+<h1 align="center">Sequencr</h1>
 
 <p align="center">
   A free, open-source, privacy-first video editor that runs entirely in your browser.
