@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
-import { ClipEffect } from '../../types';
+import { ClipEffect, Clip } from '../../types';
+import { clsx } from 'clsx';
 
 const buildCSSFilter = (effects: ClipEffect): string => {
   const parts: string[] = [];
@@ -55,10 +56,9 @@ export const PreviewWindow: React.FC = () => {
     };
   }, [isPlaying, duration]);
 
-  // Find top-most active video clip (iterate tracks in reverse)
+  // Find top-most active video clip
   const videoTracks = tracks.filter(t => t.type === 'video');
   let activeVideoClip = null;
-
   for (let i = videoTracks.length - 1; i >= 0; i--) {
     const clip = videoTracks[i].clips.find(c =>
       currentTime >= c.startTime && currentTime <= c.startTime + c.duration
@@ -74,13 +74,33 @@ export const PreviewWindow: React.FC = () => {
   useEffect(() => {
     if (videoRef.current && activeVideoClip && activeAsset) {
       const clipLocalTime = currentTime - activeVideoClip.startTime + activeVideoClip.offset;
-      if (Math.abs(videoRef.current.currentTime - clipLocalTime) > 0.05) {
-        videoRef.current.currentTime = clipLocalTime;
+      if (isPlaying) {
+        if (Math.abs(videoRef.current.currentTime - clipLocalTime) > 0.05) {
+            videoRef.current.currentTime = clipLocalTime;
+        }
       }
     }
-  }, [currentTime, activeVideoClip, activeAsset]);
+  }, [currentTime, activeVideoClip, activeAsset, isPlaying]);
 
-  // Handle transition preview (fade in)
+  // Debounced seek for scrubbing
+  useEffect(() => {
+    if (isPlaying || !videoRef.current || !activeVideoClip || !activeAsset) return;
+    const clipLocalTime = currentTime - activeVideoClip.startTime + activeVideoClip.offset;
+    const timeout = setTimeout(() => {
+      if (videoRef.current && Math.abs(videoRef.current.currentTime - clipLocalTime) > 0.05) {
+        videoRef.current.currentTime = clipLocalTime;
+      }
+    }, 50);
+    return () => clearTimeout(timeout);
+  }, [currentTime, activeVideoClip, activeAsset, isPlaying]);
+
+  // Text overlays
+  const activeTextClips = tracks
+    .filter(t => t.type === 'text')
+    .flatMap(t => t.clips)
+    .filter(c => currentTime >= c.startTime && currentTime < c.startTime + c.duration);
+
+  // Transition preview
   const transitionProgress = activeVideoClip && activeVideoClip.transitionIn.type !== 'none'
     ? Math.min(1, (currentTime - activeVideoClip.startTime) / activeVideoClip.transitionIn.duration)
     : 1;
@@ -108,6 +128,11 @@ export const PreviewWindow: React.FC = () => {
               <p className="text-sm font-bold tracking-widest uppercase">Canvas Empty</p>
             </div>
           )}
+
+          {/* Text Overlays */}
+          {activeTextClips.map((clip) => (
+            <TextOverlay key={clip.id} clip={clip} />
+          ))}
         </div>
       </div>
 
@@ -136,4 +161,36 @@ export const PreviewWindow: React.FC = () => {
       </div>
     </div>
   );
+};
+
+const TextOverlay: React.FC<{ clip: Clip }> = ({ clip }) => {
+    const style = clip.textStyle!;
+    const fonts: any = { sans: 'sans-serif', serif: 'serif', mono: 'monospace', display: 'Impact' };
+
+    return (
+        <div
+            className={clsx(
+                "absolute pointer-events-none whitespace-pre-wrap flex flex-col",
+                style.animationIn === 'fadein' && "animate-in fade-in duration-500",
+                style.animationIn === 'slideup' && "animate-in slide-in-from-bottom duration-500",
+                style.animationIn === 'slidedown' && "animate-in slide-in-from-top duration-500"
+            )}
+            style={{
+                left: `${style.positionX}%`,
+                top: `${style.positionY}%`,
+                transform: 'translate(-50%, -50%)',
+                fontFamily: fonts[style.fontFamily],
+                fontSize: `${style.fontSize}px`,
+                color: style.color,
+                backgroundColor: style.backgroundColor,
+                fontWeight: style.bold ? 'bold' : 'normal',
+                fontStyle: style.italic ? 'italic' : 'normal',
+                textAlign: style.alignment as any,
+                padding: '0.2em 0.5em',
+                borderRadius: '4px'
+            }}
+        >
+            {style.content}
+        </div>
+    );
 };

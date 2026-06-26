@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useStore, DEFAULT_EFFECTS } from '../../store/useStore';
-import { ClipEffect, TransitionType } from '../../types';
-import { Sliders, Zap, RotateCcw, X, Info } from 'lucide-react';
+import { ClipEffect, TransitionType, TextStyle } from '../../types';
+import { Sliders, Zap, RotateCcw, X, Volume2, VolumeX, AlignLeft, AlignCenter, AlignRight, Bold, Italic } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const PRESETS: Record<string, Partial<ClipEffect>> = {
@@ -19,6 +19,12 @@ const TRANSITIONS: { type: TransitionType; label: string }[] = [
   { type: 'none', label: 'None' },
   { type: 'fade', label: 'Fade' },
   { type: 'dissolve', label: 'Dissolve' },
+  { type: 'wipeleft', label: 'Wipe Left' },
+  { type: 'wiperight', label: 'Wipe Right' },
+  { type: 'wiperightdown', label: 'Wipe Down' },
+  { type: 'slideleft', label: 'Slide Left' },
+  { type: 'slideright', label: 'Slide Right' },
+  { type: 'zoom', label: 'Zoom' },
 ];
 
 export const EffectsPanel: React.FC = () => {
@@ -27,15 +33,16 @@ export const EffectsPanel: React.FC = () => {
     tracks,
     updateClipEffects,
     updateClipTransition,
+    updateClipAudio,
+    updateClipText,
     isEffectsPanelOpen,
     toggleEffectsPanel
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'style' | 'transition'>('style');
+  const [activeTab, setActiveTab] = useState<'style' | 'transition' | 'audio' | 'text'>('style');
 
-  const selectedClip = tracks
-    .flatMap(t => t.clips)
-    .find(c => c.id === selectedClipId);
+  const selectedTrack = tracks.find(t => t.clips.some(c => c.id === selectedClipId));
+  const selectedClip = selectedTrack?.clips.find(c => c.id === selectedClipId);
 
   if (!isEffectsPanelOpen) return null;
 
@@ -50,20 +57,13 @@ export const EffectsPanel: React.FC = () => {
         </div>
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center opacity-20">
           <Sliders size={48} className="mb-4" />
-          <p className="text-xs font-bold uppercase tracking-widest leading-relaxed">Select a clip to<br/>edit effects</p>
+          <p className="text-xs font-bold uppercase tracking-widest leading-relaxed">Select a clip to<br/>edit properties</p>
         </div>
       </div>
     );
   }
 
-  const handleEffectChange = (updates: Partial<ClipEffect>) => {
-    updateClipEffects(selectedClipId, updates);
-  };
-
-  const handlePresetClick = (presetName: string) => {
-    const preset = PRESETS[presetName];
-    updateClipEffects(selectedClipId, { ...DEFAULT_EFFECTS, ...preset });
-  };
+  const isTextClip = selectedTrack?.type === 'text';
 
   return (
     <div className="w-[280px] bg-surface border-l border-white/5 flex flex-col h-full animate-in slide-in-from-right duration-300 shadow-2xl">
@@ -75,116 +75,201 @@ export const EffectsPanel: React.FC = () => {
       </div>
 
       <div className="flex border-b border-white/5 bg-black/20">
-        <button
-          onClick={() => setActiveTab('style')}
-          className={clsx(
-            "flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-all border-b-2",
-            activeTab === 'style' ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-300"
-          )}
-        >
-          Style
-        </button>
-        <button
-          onClick={() => setActiveTab('transition')}
-          className={clsx(
-            "flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-all border-b-2",
-            activeTab === 'transition' ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-300"
-          )}
-        >
-          Transition
-        </button>
+        {isTextClip ? (
+            <button className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 border-primary text-primary">Text</button>
+        ) : (
+            <>
+                <TabButton active={activeTab === 'style'} label="Style" onClick={() => setActiveTab('style')} />
+                <TabButton active={activeTab === 'transition'} label="Transition" onClick={() => setActiveTab('transition')} />
+                <TabButton active={activeTab === 'audio'} label="Audio" onClick={() => setActiveTab('audio')} />
+            </>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {activeTab === 'style' ? (
-          <div className="p-5 space-y-6">
-            <div>
-              <label className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-3 block">Presets</label>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.keys(PRESETS).map((name) => (
-                  <button
-                    key={name}
-                    onClick={() => handlePresetClick(name)}
-                    className={clsx(
-                      "py-2 px-3 rounded-lg text-[10px] font-bold capitalize transition-all border",
-                      selectedClip.effects.preset === name
-                        ? "bg-primary/20 border-primary text-primary shadow-lg shadow-primary/10"
-                        : "bg-white/5 border-transparent hover:bg-white/10 text-gray-400"
-                    )}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="h-px bg-white/5" />
-
-            <div className="space-y-4">
-              <Slider label="Brightness" value={selectedClip.effects.brightness} min={0} max={200} onChange={(v) => handleEffectChange({ brightness: v, preset: 'none' })} />
-              <Slider label="Contrast" value={selectedClip.effects.contrast} min={0} max={200} onChange={(v) => handleEffectChange({ contrast: v, preset: 'none' })} />
-              <Slider label="Saturation" value={selectedClip.effects.saturation} min={0} max={200} onChange={(v) => handleEffectChange({ saturation: v, preset: 'none' })} />
-              <Slider label="Hue" value={selectedClip.effects.hue} min={-180} max={180} onChange={(v) => handleEffectChange({ hue: v, preset: 'none' })} />
-              <Slider label="Blur" value={selectedClip.effects.blur} min={0} max={20} step={0.5} onChange={(v) => handleEffectChange({ blur: v, preset: 'none' })} />
-              <Slider label="Opacity" value={selectedClip.effects.opacity} min={0} max={100} onChange={(v) => handleEffectChange({ opacity: v, preset: 'none' })} />
-            </div>
-
-            <button
-              onClick={() => updateClipEffects(selectedClipId, DEFAULT_EFFECTS)}
-              className="w-full py-2.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white/5 transition-all flex items-center justify-center space-x-2"
-            >
-              <RotateCcw size={14} />
-              <span>Reset Effects</span>
-            </button>
-          </div>
+        {isTextClip ? (
+            <TextTab clip={selectedClip} onUpdate={(u) => updateClipText(selectedClipId, u)} />
         ) : (
-          <div className="p-5 space-y-6">
-            <div>
-              <label className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-3 block">In Transition</label>
-              <div className="grid grid-cols-2 gap-2">
-                {TRANSITIONS.map((t) => (
-                  <button
-                    key={t.type}
-                    onClick={() => updateClipTransition(selectedClipId, { ...selectedClip.transitionIn, type: t.type })}
-                    className={clsx(
-                      "py-3 px-3 rounded-xl text-[10px] font-bold transition-all border flex flex-col items-center justify-center space-y-2",
-                      selectedClip.transitionIn.type === t.type
-                        ? "bg-primary/20 border-primary text-primary shadow-lg shadow-primary/10"
-                        : "bg-white/5 border-transparent hover:bg-white/10 text-gray-400"
-                    )}
-                  >
-                    <Zap size={16} className={selectedClip.transitionIn.type === t.type ? "text-primary" : "text-gray-600"} />
-                    <span>{t.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {selectedClip.transitionIn.type !== 'none' && (
-              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                <Slider
-                  label="Duration (s)"
-                  value={selectedClip.transitionIn.duration}
-                  min={0.1}
-                  max={2.0}
-                  step={0.1}
-                  onChange={(v) => updateClipTransition(selectedClipId, { ...selectedClip.transitionIn, duration: v })}
-                />
-              </div>
-            )}
-
-            <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl flex items-start space-x-3 opacity-60">
-              <Info size={16} className="text-primary mt-0.5 shrink-0" />
-              <p className="text-[10px] font-medium leading-relaxed text-gray-400">
-                More transitions (Wipes, Slides) coming soon in the next update.
-              </p>
-            </div>
-          </div>
+            <>
+                {activeTab === 'style' && <StyleTab clip={selectedClip} onUpdate={(u) => updateClipEffects(selectedClipId, u)} onReset={() => updateClipEffects(selectedClipId, DEFAULT_EFFECTS)} />}
+                {activeTab === 'transition' && <TransitionTab clip={selectedClip} onUpdate={(u) => updateClipTransition(selectedClipId, u)} />}
+                {activeTab === 'audio' && <AudioTab clip={selectedClip} onUpdate={(u) => updateClipAudio(selectedClipId, u)} />}
+            </>
         )}
       </div>
     </div>
   );
 };
+
+const TabButton: React.FC<{ active: boolean; label: string; onClick: () => void }> = ({ active, label, onClick }) => (
+    <button
+      onClick={onClick}
+      className={clsx(
+        "flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-all border-b-2",
+        active ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-300"
+      )}
+    >
+      {label}
+    </button>
+);
+
+const StyleTab: React.FC<{ clip: any; onUpdate: (u: any) => void; onReset: () => void }> = ({ clip, onUpdate, onReset }) => (
+    <div className="p-5 space-y-6">
+        <div>
+            <label className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-3 block">Presets</label>
+            <div className="grid grid-cols-2 gap-2">
+            {Object.keys(PRESETS).map((name) => (
+                <button
+                key={name}
+                onClick={() => onUpdate({ ...DEFAULT_EFFECTS, ...PRESETS[name] })}
+                className={clsx(
+                    "py-2 px-3 rounded-lg text-[10px] font-bold capitalize transition-all border",
+                    clip.effects.preset === name
+                    ? "bg-primary/20 border-primary text-primary shadow-lg shadow-primary/10"
+                    : "bg-white/5 border-transparent hover:bg-white/10 text-gray-400"
+                )}
+                >
+                {name}
+                </button>
+            ))}
+            </div>
+        </div>
+        <div className="h-px bg-white/5" />
+        <div className="space-y-4">
+            <Slider label="Brightness" value={clip.effects.brightness} min={0} max={200} onChange={(v) => onUpdate({ brightness: v, preset: 'none' })} />
+            <Slider label="Contrast" value={clip.effects.contrast} min={0} max={200} onChange={(v) => onUpdate({ contrast: v, preset: 'none' })} />
+            <Slider label="Saturation" value={clip.effects.saturation} min={0} max={200} onChange={(v) => onUpdate({ saturation: v, preset: 'none' })} />
+            <Slider label="Hue" value={clip.effects.hue} min={-180} max={180} onChange={(v) => onUpdate({ hue: v, preset: 'none' })} />
+            <Slider label="Blur" value={clip.effects.blur} min={0} max={20} step={0.5} onChange={(v) => onUpdate({ blur: v, preset: 'none' })} />
+            <Slider label="Opacity" value={clip.effects.opacity} min={0} max={100} onChange={(v) => onUpdate({ opacity: v, preset: 'none' })} />
+        </div>
+        <button onClick={onReset} className="w-full py-2.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white/5 transition-all flex items-center justify-center space-x-2">
+            <RotateCcw size={14} />
+            <span>Reset Effects</span>
+        </button>
+    </div>
+);
+
+const TransitionTab: React.FC<{ clip: any; onUpdate: (u: any) => void }> = ({ clip, onUpdate }) => (
+    <div className="p-5 space-y-6">
+        <div>
+            <label className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-3 block">In Transition</label>
+            <div className="grid grid-cols-2 gap-2">
+            {TRANSITIONS.map((t) => (
+                <button
+                key={t.type}
+                onClick={() => onUpdate({ ...clip.transitionIn, type: t.type })}
+                className={clsx(
+                    "py-3 px-3 rounded-xl text-[10px] font-bold transition-all border flex flex-col items-center justify-center space-y-2",
+                    clip.transitionIn.type === t.type
+                    ? "bg-primary/20 border-primary text-primary shadow-lg shadow-primary/10"
+                    : "bg-white/5 border-transparent hover:bg-white/10 text-gray-400"
+                )}
+                >
+                <Zap size={16} className={clip.transitionIn.type === t.type ? "text-primary" : "text-gray-600"} />
+                <span>{t.label}</span>
+                </button>
+            ))}
+            </div>
+        </div>
+        {clip.transitionIn.type !== 'none' && (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+            <Slider label="Duration (s)" value={clip.transitionIn.duration} min={0.1} max={2.0} step={0.1} onChange={(v) => onUpdate({ ...clip.transitionIn, duration: v })} />
+            </div>
+        )}
+    </div>
+);
+
+const AudioTab: React.FC<{ clip: any; onUpdate: (u: any) => void }> = ({ clip, onUpdate }) => (
+    <div className="p-5 space-y-6">
+        <div className="flex flex-col items-center justify-center p-6 bg-black/20 rounded-2xl border border-white/5">
+            <svg width="100%" height="40" viewBox="0 0 200 40" className="text-primary overflow-visible">
+                <path
+                    d={`M 0 40 L ${clip.fadeInDuration * 20} 0 L ${200 - clip.fadeOutDuration * 20} 0 L 200 40`}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                />
+            </svg>
+            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-600 mt-4">Envelope</span>
+        </div>
+        <div className="space-y-4">
+            <div className="flex items-center space-x-3">
+                {clip.volume === 0 ? <VolumeX size={14} className="text-red-500" /> : <Volume2 size={14} className="text-primary" />}
+                <div className="flex-1">
+                    <Slider label="Volume" value={clip.volume} min={0} max={200} onChange={(v) => onUpdate({ volume: v })} />
+                </div>
+            </div>
+            <Slider label="Fade In (s)" value={clip.fadeInDuration} min={0} max={3.0} step={0.1} onChange={(v) => onUpdate({ fadeInDuration: v })} />
+            <Slider label="Fade Out (s)" value={clip.fadeOutDuration} min={0} max={3.0} step={0.1} onChange={(v) => onUpdate({ fadeOutDuration: v })} />
+        </div>
+    </div>
+);
+
+const TextTab: React.FC<{ clip: any; onUpdate: (u: Partial<TextStyle>) => void }> = ({ clip, onUpdate }) => (
+    <div className="p-5 space-y-6">
+        <div className="space-y-2">
+            <label className="text-[9px] font-black uppercase tracking-widest text-gray-500 block">Content</label>
+            <textarea
+                value={clip.textStyle.content}
+                onChange={(e) => onUpdate({ content: e.target.value })}
+                className="w-full h-24 bg-black/20 border border-white/10 rounded-xl p-3 text-xs focus:ring-1 ring-primary outline-none custom-scrollbar"
+            />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <label className="text-[9px] font-black uppercase tracking-widest text-gray-500 block">Font</label>
+                <select
+                    value={clip.textStyle.fontFamily}
+                    onChange={(e) => onUpdate({ fontFamily: e.target.value })}
+                    className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-xs"
+                >
+                    <option value="sans">Sans</option>
+                    <option value="serif">Serif</option>
+                    <option value="mono">Mono</option>
+                    <option value="display">Display</option>
+                </select>
+            </div>
+            <Slider label="Size" value={clip.textStyle.fontSize} min={12} max={120} onChange={(v) => onUpdate({ fontSize: v })} />
+        </div>
+        <div className="flex items-center space-x-4">
+            <div className="flex-1 space-y-2">
+                <label className="text-[9px] font-black uppercase tracking-widest text-gray-500 block">Color</label>
+                <input type="color" value={clip.textStyle.color} onChange={(e) => onUpdate({ color: e.target.value })} className="w-full h-8 bg-transparent rounded cursor-pointer" />
+            </div>
+            <div className="flex-1 space-y-2">
+                <label className="text-[9px] font-black uppercase tracking-widest text-gray-500 block">BG</label>
+                <div className="flex items-center space-x-2">
+                    <input type="color" value={clip.textStyle.backgroundColor === 'transparent' ? '#000000' : clip.textStyle.backgroundColor} onChange={(e) => onUpdate({ backgroundColor: e.target.value })} disabled={clip.textStyle.backgroundColor === 'transparent'} className="w-full h-8 bg-transparent rounded cursor-pointer disabled:opacity-30" />
+                    <button onClick={() => onUpdate({ backgroundColor: clip.textStyle.backgroundColor === 'transparent' ? '#000000' : 'transparent' })} className={clsx("p-2 rounded border", clip.textStyle.backgroundColor === 'transparent' ? "border-primary text-primary" : "border-white/10 text-gray-500")}>X</button>
+                </div>
+            </div>
+        </div>
+        <div className="flex border border-white/10 rounded-xl overflow-hidden">
+            <button onClick={() => onUpdate({ bold: !clip.textStyle.bold })} className={clsx("flex-1 py-2 flex justify-center", clip.textStyle.bold ? "bg-primary/20 text-primary" : "text-gray-500")}><Bold size={16} /></button>
+            <button onClick={() => onUpdate({ italic: !clip.textStyle.italic })} className={clsx("flex-1 py-2 flex justify-center border-l border-white/10", clip.textStyle.italic ? "bg-primary/20 text-primary" : "text-gray-500")}><Italic size={16} /></button>
+        </div>
+        <div className="flex border border-white/10 rounded-xl overflow-hidden">
+            <button onClick={() => onUpdate({ alignment: 'left' })} className={clsx("flex-1 py-2 flex justify-center", clip.textStyle.alignment === 'left' ? "bg-primary/20 text-primary" : "text-gray-500")}><AlignLeft size={16} /></button>
+            <button onClick={() => onUpdate({ alignment: 'center' })} className={clsx("flex-1 py-2 flex justify-center border-l border-white/10", clip.textStyle.alignment === 'center' ? "bg-primary/20 text-primary" : "text-gray-500")}><AlignCenter size={16} /></button>
+            <button onClick={() => onUpdate({ alignment: 'right' })} className={clsx("flex-1 py-2 flex justify-center border-l border-white/10", clip.textStyle.alignment === 'right' ? "bg-primary/20 text-primary" : "text-gray-500")}><AlignRight size={16} /></button>
+        </div>
+        <div className="space-y-4">
+            <Slider label="Pos X (%)" value={clip.textStyle.positionX} min={0} max={100} onChange={(v) => onUpdate({ positionX: v })} />
+            <Slider label="Pos Y (%)" value={clip.textStyle.positionY} min={0} max={100} onChange={(v) => onUpdate({ positionY: v })} />
+        </div>
+        <div className="space-y-4">
+            <label className="text-[9px] font-black uppercase tracking-widest text-gray-500 block">Animation</label>
+            <select value={clip.textStyle.animationIn} onChange={(e) => onUpdate({ animationIn: e.target.value as any })} className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-xs">
+                <option value="none">None</option>
+                <option value="fadein">Fade In</option>
+                <option value="slideup">Slide Up</option>
+                <option value="slidedown">Slide Down</option>
+            </select>
+            {clip.textStyle.animationIn !== 'none' && <Slider label="Duration (s)" value={clip.textStyle.animationDuration} min={0.1} max={2.0} step={0.1} onChange={(v) => onUpdate({ animationDuration: v })} />}
+        </div>
+    </div>
+);
 
 const Slider: React.FC<{ label: string; value: number; min: number; max: number; step?: number; onChange: (v: number) => void }> = ({ label, value, min, max, step = 1, onChange }) => (
   <div className="space-y-2">

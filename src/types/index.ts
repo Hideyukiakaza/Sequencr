@@ -8,14 +8,38 @@ export interface ClipEffect {
   preset: 'none' | 'grayscale' | 'sepia' | 'invert' | 'vivid' | 'cinematic' | 'warm' | 'cool';
 }
 
-export type TransitionType = 'none' | 'fade' | 'dissolve' | 'wipeleft' | 'wiperight' | 'slideleft' | 'slideright';
+export type TransitionType =
+  | 'none'
+  | 'fade'
+  | 'dissolve'
+  | 'wipeleft'
+  | 'wiperight'
+  | 'wiperightdown'
+  | 'slideleft'
+  | 'slideright'
+  | 'zoom';
 
 export interface ClipTransition {
   type: TransitionType;
   duration: number; // seconds, default 0.5
 }
 
-export type TrackType = 'video' | 'audio';
+export interface TextStyle {
+  content: string;
+  fontFamily: string;   // 'sans' | 'serif' | 'mono' | 'display'
+  fontSize: number;     // 12–120, default 48
+  color: string;        // hex, default '#ffffff'
+  backgroundColor: string; // hex or 'transparent', default 'transparent'
+  bold: boolean;
+  italic: boolean;
+  alignment: 'left' | 'center' | 'right';
+  positionX: number;    // 0–100 (percent of canvas width), default 50
+  positionY: number;    // 0–100 (percent of canvas height), default 80
+  animationIn: 'none' | 'fadein' | 'slideup' | 'slidedown';
+  animationDuration: number; // seconds, default 0.5
+}
+
+export type TrackType = 'video' | 'audio' | 'text';
 
 export interface Asset {
   id: string;
@@ -36,6 +60,10 @@ export interface Clip {
   offset: number; // Offset within the original asset (seconds)
   effects: ClipEffect;
   transitionIn: ClipTransition;
+  volume: number;        // 0–200, default 100
+  fadeInDuration: number;   // seconds, default 0
+  fadeOutDuration: number;  // seconds, default 0
+  textStyle?: TextStyle;
 }
 
 export interface Track {
