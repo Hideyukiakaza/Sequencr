@@ -4,6 +4,8 @@
 
 <h1 align="center">Sequencr</h1>
 
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.paywithchai.in/hideyukiakaza)
+
 <p align="center">
   A free, open-source, privacy-first video editor that runs entirely in your browser.
   <br />
