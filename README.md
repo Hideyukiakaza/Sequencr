@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/sequencr-logo.png" alt="Sequencr Logo" width="250" />
+  <img src="public/sequencr-logo.png" alt="Sequencr Logo" width="350" />
 </p>
 
 <h1 align="center">Sequencr</h1>
